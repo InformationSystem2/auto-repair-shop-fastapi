@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS permissions (
     action VARCHAR(50) NOT NULL UNIQUE
 );
 
-CREATE TABLE IF NOT EXISTS role_permissions (
+CREATE TABLE IF NOT EXISTS role_permission (
     role_id BIGINT NOT NULL,
     permission_id BIGINT NOT NULL,
     PRIMARY KEY (role_id, permission_id),
