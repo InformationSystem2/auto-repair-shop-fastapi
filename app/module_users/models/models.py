@@ -8,12 +8,11 @@ role_user = Table(
     Column('role_id', BigInteger, ForeignKey('roles.id', ondelete='CASCADE'), primary_key=True)
 )
 
-role_permissions = Table(
-    'role_permissions', Base.metadata,
+role_permission = Table(
+    'role_permission', Base.metadata,
     Column('role_id', BigInteger, ForeignKey('roles.id', ondelete='CASCADE'), primary_key=True),
     Column('permission_id', BigInteger, ForeignKey('permissions.id', ondelete='CASCADE'), primary_key=True)
 )
-
 
 class User(Base):
     __tablename__ = 'users'
@@ -35,7 +34,7 @@ class User(Base):
     )
 
 
-class UserRole(Base):
+class Role(Base):
     __tablename__ = 'roles'
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
@@ -46,7 +45,7 @@ class UserRole(Base):
         'User', secondary=role_user, back_populates='roles'
     )
     permissions: Mapped[list["Permission"]] = relationship(
-        'Permission', secondary=role_permissions, back_populates='roles'
+        'Permission', secondary=role_permission, back_populates='roles'
     )
 
 
@@ -58,6 +57,6 @@ class Permission(Base):
     description: Mapped[str | None] = mapped_column(String(255), nullable=True)
     action: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
 
-    roles: Mapped[list["UserRole"]] = relationship(
-        'UserRole', secondary=role_permissions, back_populates='permissions'
+    roles: Mapped[list["Role"]] = relationship(
+        'Role', secondary=role_permission, back_populates='permissions'
     )
