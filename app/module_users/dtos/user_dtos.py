@@ -1,35 +1,40 @@
+from datetime import datetime
+from uuid import UUID
+
 from pydantic import BaseModel, EmailStr
+
+from app.module_users.dtos.role_dtos import RoleResponseDto
 
 
 class UserBase(BaseModel):
     email: EmailStr
-    document_type: str | None = None
-    document_number: str | None = None
-    first_name: str
+    name: str
     last_name: str
     phone: str | None = None
-    gender: str | None = None
 
 
 class UserCreateDto(UserBase):
     password: str
+    username: str
+    role_ids: list[int] = []
 
 
 class UserUpdateDto(BaseModel):
-    password: str | None = None
-    document_type: str | None = None
-    document_number: str | None = None
-    first_name: str | None = None
+    name: str | None = None
     last_name: str | None = None
     phone: str | None = None
-    gender: str | None = None
+    password: str | None = None
     is_active: bool | None = None
+    role_ids: list[int] | None = None
 
 
 class UserResponseDto(UserBase):
-    id: int
+    id: UUID
     username: str
     is_active: bool
+    created_at: datetime
+    updated_at: datetime
+    roles: list[RoleResponseDto] = []
 
     class Config:
         from_attributes = True

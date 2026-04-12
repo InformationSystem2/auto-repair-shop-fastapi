@@ -1,13 +1,16 @@
 from fastapi import FastAPI
 
-from app.module_users.controller import user_controller
+from app.module_users.controller.user_controller import router as users_router
+from app.security.controller.auth_controller import router as auth_router
+from app.module_users.controller.role_controller import router as role_route
+from app.module_users.controller.permission_controller import router as permission_route
 
-# Equivalente a @SpringBootApplication
-app = FastAPI(title="Taller Mecánico API")
+app = FastAPI(
+    title="Plataforma de Auxilio Mecánico",
+    version="1.0.0",
+)
 
-# Un endpoint de prueba para ver que todo funciona
-@app.get("/")
-def health_check():
-    return {"status": "ok", "message": "Servidor FastAPI funcionando correctamente"}
-
-app.include_router(user_controller.router)
+app.include_router(auth_router)
+app.include_router(users_router)
+app.include_router(role_route)
+app.include_router(permission_route)
