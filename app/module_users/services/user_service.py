@@ -33,7 +33,7 @@ def _generate_username(db: Session) -> str:
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 def _resolve_roles(db: Session, role_ids: list[int]):
-    """Devuelve los objetos Role correspondientes a los IDs; lanza 404 si alguno no existe."""
+    """Devuelve los objetos Role correspondientes a los IDs; lanza 404 si alguno userno existe."""
     roles = []
     for rid in role_ids:
         role = role_repository.get_role_by_id(db, rid)
