@@ -7,8 +7,9 @@ Ejecutar:
 import bcrypt
 from sqlalchemy.orm import Session
 
-from app.database import SessionLocal
+from app.database import SessionLocal, Base, engine
 from app.module_users.models.models import Permission, Role, User
+from app.module_workshops.models.models import Workshop, Technician, Specialty
 
 
 def _hash(password: str) -> str:
@@ -94,8 +95,27 @@ ADMIN_USER = {
     "phone": None,
 }
 
+OWNER_USER = {
+    "username": "owner",
+    "name": "Taller",
+    "last_name": "Dueño",
+    "email": "owner@tallercentral.com",
+    "password": "owner123",
+    "phone": "77889900",
+}
+
+DEFAULT_SPECIALTIES = [
+    {"name": "Mecánica General", "description": "Mantenimiento preventivo y correctivo de motores y sistemas mecánicos."},
+    {"name": "Electricidad", "description": "Diagnóstico y reparación de sistemas eléctricos y electrónicos."},
+    {"name": "Chapería y Pintura", "description": "Reparación de carrocería y acabado estético."},
+    {"name": "Frenos", "description": "Servicio especializado en sistemas de frenado de disco y tambor."},
+]
+
 
 def run_seed():
+    # Asegurar que todas las tablas existan (incluyendo las nuevas de workshops)
+    Base.metadata.create_all(bind=engine)
+    
     db: Session = SessionLocal()
 
     try:
@@ -151,6 +171,53 @@ def run_seed():
             admin.roles = [role_map["admin"]]
             db.add(admin)
             print(f"  ✅ Usuario admin creado: {ADMIN_USER['username']} / {ADMIN_USER['password']}")
+
+        # 4. Crear Especialidades por defecto
+        for spec_data in DEFAULT_SPECIALTIES:
+            existing = db.query(Specialty).filter(Specialty.name == spec_data["name"]).first()
+            if not existing:
+                spec = Specialty(**spec_data)
+                db.add(spec)
+                print(f"  ✅ Especialidad creada: {spec_data['name']}")
+
+        # 5. Crear un taller de prueba si no existe
+        existing_workshop = db.query(Workshop).filter(Workshop.ruc_nit == "1234567-0").first()
+        if not existing_workshop:
+            workshop = Workshop(
+                name="Taller Central",
+                business_name="Talleres Automotrices S.A.",
+                ruc_nit="1234567-0",
+                address="Av. Panamericana #123",
+                phone="44556677",
+                is_available=True,
+                is_verified=True,
+                commission_rate=10.0
+            )
+            db.add(workshop)
+            db.flush() # Para obtener el ID del taller
+            print(f"  ✅ Taller de prueba creado: {workshop.name}")
+        else:
+            workshop = existing_workshop
+
+        # 6. Crear dueño del taller (Technician)
+        existing_owner = db.query(User).filter(User.username == OWNER_USER["username"]).first()
+        if existing_owner:
+            print(f"  ⏭  Usuario dueño ya existe: {OWNER_USER['username']}")
+        else:
+            owner = Technician(
+                username=OWNER_USER["username"],
+                name=OWNER_USER["name"],
+                last_name=OWNER_USER["last_name"],
+                email=OWNER_USER["email"],
+                password=_hash(OWNER_USER["password"]),
+                phone=OWNER_USER["phone"],
+                type="technician", # Importante: el tipo debe coincidir con el rol/modelo
+                workshop_id=workshop.id,
+                is_active=True
+            )
+            owner.roles = [role_map["workshop_owner"]]
+            db.add(owner)
+            print(f"  ✅ Usuario dueño creado: {OWNER_USER['username']} / {OWNER_USER['password']}")
 
         db.commit()
         print("\n🎉 Seed completado exitosamente!")
