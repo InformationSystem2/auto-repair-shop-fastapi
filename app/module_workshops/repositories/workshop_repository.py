@@ -48,6 +48,10 @@ def find_nearby_workshops(
     ]
 
 
+def get_workshops_by_owner(db: Session, owner_user_id: uuid.UUID) -> list[Workshop]:
+    return db.query(Workshop).filter(Workshop.owner_user_id == owner_user_id).all()
+
+
 def save_workshop(db: Session, workshop: Workshop) -> Workshop:
     db.add(workshop)
     db.commit()
