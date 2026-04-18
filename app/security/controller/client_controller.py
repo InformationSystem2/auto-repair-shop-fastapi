@@ -13,6 +13,15 @@ router = APIRouter(prefix="/api/clients", tags=["Clients"])
 _allowed = Depends(require_role("admin"))
 
 
+@router.get("/me", response_model=ClientResponseDTO, status_code=status.HTTP_200_OK)
+def get_my_client_profile(
+    db: Session = Depends(get_db),
+    current_user=Depends(require_role("client")),
+):
+    """Devuelve el perfil de cliente del usuario autenticado (rol client requerido)."""
+    return client_service.get_client_by_id(db, current_user.id)
+
+
 @router.post("/", response_model=ClientResponseDTO, status_code=status.HTTP_201_CREATED)
 def create_client(data: ClientCreateDTO, db: Session = Depends(get_db)):
     """Crea un usuario con rol 'client' + su perfil de cliente. Endpoint público (registro)."""
