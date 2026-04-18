@@ -7,6 +7,7 @@ from app.module_users.controller.role_controller import router as role_route
 from app.module_users.controller.permission_controller import router as permission_route
 from app.security.controller.client_controller import router as client_route
 from app.module_users.controller.vehicle_controller import router as vehicle_route
+from app.module_incidents.controller.incident_controller import router as incidents_router
 from app.module_workshops.controller.workshop_controller import router as workshop_router
 from app.module_workshops.controller.technician_controller import router as technician_router
 from app.module_workshops.controller.specialty_controller import router as specialty_router
@@ -31,6 +32,7 @@ app.include_router(role_route)
 app.include_router(permission_route)
 app.include_router(client_route)
 app.include_router(vehicle_route)
+app.include_router(incidents_router)
 app.include_router(workshop_router)
 app.include_router(technician_router)
 app.include_router(specialty_router)
