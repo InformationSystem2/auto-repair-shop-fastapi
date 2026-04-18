@@ -7,6 +7,7 @@ from app.module_users.controller.role_controller import router as role_route
 from app.module_users.controller.permission_controller import router as permission_route
 from app.security.controller.client_controller import router as client_route
 from app.module_users.controller.vehicle_controller import router as vehicle_route
+from app.module_incidents.controller.incident_controller import router as incidents_router
 
 app = FastAPI(
     title="Plataforma de Auxilio Mecánico",
@@ -28,3 +29,4 @@ app.include_router(role_route)
 app.include_router(permission_route)
 app.include_router(client_route)
 app.include_router(vehicle_route)
+app.include_router(incidents_router)
