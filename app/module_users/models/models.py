@@ -57,13 +57,14 @@ class User(Base):
         "polymorphic_on": type,
         "polymorphic_identity": "user",
     }
-
+    
     roles: Mapped[list["Role"]] = relationship(
         'Role', secondary=role_user, back_populates='users'
     )
     notifications: Mapped[list["Notification"]] = relationship(
         "Notification", back_populates="user", cascade="all, delete-orphan"
     )
+
 
 
 class Role(Base):
