@@ -86,3 +86,6 @@ app.include_router(offers_router)
 app.include_router(workshop_router)
 app.include_router(technician_router)
 app.include_router(specialty_router)
+
+from app.module_dashboard.dashboard_controller import router as dashboard_router
+app.include_router(dashboard_router)
