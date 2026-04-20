@@ -35,6 +35,34 @@ def classify_incident(
         image_analysis: Optional[dict] = None,
         text_analysis: Optional[dict] = None,
 ) -> ClassificationResult:
+    if image_analysis:
+        sistema = image_analysis.get("sistema", {})
+        cliente = image_analysis.get("cliente", {})
+        
+        category = str(sistema.get("categoria", "incierto")).lower().strip()
+        priority = str(sistema.get("prioridad", "MEDIUM")).upper().strip()
+
+        try:
+            confidence = float(sistema.get("confianza", 0.6))
+        except (TypeError, ValueError):
+            confidence = 0.6
+        confidence = max(0.0, min(1.0, confidence))
+
+        summary = str(cliente.get("mensaje_tranquilizador") or description[:200])
+
+        logger.info(
+            "Classification from vertex image_analysis: category=%s, priority=%s, confidence=%.2f",
+            category,
+            priority,
+            confidence,
+        )
+        return ClassificationResult(
+            category=category,
+            priority=priority,
+            confidence=confidence,
+            summary=summary,
+        )
+
     combined = " ".join(filter(None, [description, audio_transcript])).lower()
 
     category = "general"
