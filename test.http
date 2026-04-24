@@ -40,7 +40,7 @@ Content-Type: application/json
     "make": "Tesla",
     "model": "Model 3",
     "year": 2023,
-    "license_plate": "ADM-019",
+    "license_plate": "ADM-018",
     "color": "Plata",
     "transmission_type": "automatic",
     "fuel_type": "electric"
