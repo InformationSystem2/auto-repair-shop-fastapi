@@ -35,6 +35,7 @@ from app.module_incidents.repositories import (
 )
 from app.module_incidents.services import assignment_service, incident_service
 from app.module_users.models import User
+from app.security.models import Vehicle
 from app.security.config.security import get_current_user, require_role
 
 logger = logging.getLogger(__name__)
@@ -85,15 +86,22 @@ def _process_incident_with_ai(incident_id: uuid.UUID) -> None:
                 elif ev.evidence_type.value == "image":
                     image_evidences.append(ev)
             
-            # Construir el contexto de texto completo
-            full_context = [f"Descripción inicial: {incident.description}"]
-            full_context.extend(text_from_evidences)
-            full_description = "\n".join(full_context)
+            # Construir información del vehículo (Consulta manual)
+            vehicle_info = "No especificado"
+            if incident.vehicle_id:
+                v = db.query(Vehicle).filter(Vehicle.id == incident.vehicle_id).first()
+                if v:
+                    vehicle_info = f"{v.brand} {v.model} ({v.year})"
+
+            # Extraer el audio transcript por separado (si existe)
+            audio_transcript = next((ev.transcription for ev in evidence_list if ev.evidence_type.value == "audio" and ev.transcription), None)
 
             # 2. Análisis IA Multimodal
             triage_result = vertex_service.analyze_incident_multimodal(
-                description=full_description,
-                image_urls=[ev.file_url for ev in image_evidences]
+                description=incident.description,
+                image_urls=[ev.file_url for ev in image_evidences],
+                audio_transcript=audio_transcript,
+                vehicle_info=vehicle_info
             )
 
             # 3. Guardar resultados básicos
