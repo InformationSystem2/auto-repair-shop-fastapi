@@ -1,0 +1,123 @@
+@startuml Registrar Cliente - MVC
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontName Courier
+skinparam sequence {
+    ArrowColor #333333
+    ActorBackgroundColor #E1F5FE
+    ActorBorderColor #01579B
+    ParticipantBackgroundColor #FFF9C4
+    ParticipantBorderColor #F57F17
+    LifeLineBorderColor #666666
+}
+
+title CU01 - Registrar Cliente\nDiagrama de Secuencia MVC (UML 2.5)
+
+actor "Cliente\n(Usuario)" as Cliente
+participant "Vista\n(Browser/App)" as Vista
+participant "Controlador\n(API REST)" as Controlador
+participant "Modelo\n(Lógica + BD)" as Modelo
+database "Base de Datos\nPostgreSQL" as BD
+
+== Flujo: Registrar Cliente (Patrón MVC) ==
+
+Cliente -> Vista: 1. Completa formulario de registro\n(nombre, email, contraseña, dirección, etc.)
+activate Vista
+
+Vista -> Controlador: 2. POST /api/auth/register_client\nJSON con datos del cliente
+activate Controlador
+
+note right of Controlador
+  Validar DTO (Pydantic)
+  Extraer parámetros
+end note
+
+Controlador -> Modelo: 3. create_client(db, ClientCreateDTO)
+activate Modelo
+
+note right of Modelo
+  - Validar email único
+  - Validar rol "client"
+  - Hashear contraseña
+  - Generar username
+  - Crear objeto Client
+end note
+
+Modelo -> BD: 4. Verificar email\nSELECT * FROM users WHERE email = ?
+activate BD
+BD --> Modelo: NULL (disponible)
+deactivate BD
+
+alt Email duplicado
+  Modelo --> Controlador: ❌ HTTPException 409
+  Controlador --> Vista: 409 CONFLICT
+  Vista --> Cliente: Error: Email ya existe
+else Email válido
+
+  Modelo -> BD: 5. Verificar rol\nSELECT * FROM roles WHERE name = 'client'
+  activate BD
+  BD --> Modelo: Role (id: 2)
+  deactivate BD
+
+  alt Rol no existe
+    Modelo --> Controlador: ❌ HTTPException 500
+    Controlador --> Vista: 500 ERROR
+    Vista --> Cliente: Error: Configuración del servidor
+  else Rol existe
+
+    note right of Modelo
+      Hashear con bcrypt
+      Generar username único
+    end note
+
+    Modelo -> BD: 6. Insertar datos\nINSERT INTO users, clients, user_roles
+    activate BD
+    BD --> Modelo: ✓ Datos guardados
+    deactivate BD
+
+    Modelo --> Controlador: ✅ ClientResponseDTO\n{id, username, email, ...}
+    deactivate Modelo
+
+    note right of Controlador
+      Serializar respuesta
+      Retornar HTTP 201
+    end note
+
+    Controlador --> Vista: ✅ HTTP 201 CREATED\nJSON con datos del cliente
+    deactivate Controlador
+
+    Vista --> Cliente: ✅ Registro exitoso\nCliente creado
+  end
+end
+
+deactivate Vista
+
+== Responsabilidades del Patrón MVC ==
+
+note right of Vista
+  **VISTA (V - View)**
+  - Interfaz de usuario
+  - Formularios HTML
+  - Validación en cliente
+  - Mostrar errores/éxito
+end note
+
+note right of Controlador
+  **CONTROLADOR (C - Controller)**
+  - Recibir requests HTTP
+  - Validar DTOs (Pydantic)
+  - Llamar modelo
+  - Retornar respuestas HTTP
+  - Códigos de estado
+end note
+
+note right of Modelo
+  **MODELO (M - Model)**
+  - Lógica de negocio
+  - Validaciones DB
+  - Encriptación
+  - Acceso a datos (ORM)
+  - Gestionar transacciones
+end note
+
+@enduml
+

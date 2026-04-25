@@ -6,10 +6,6 @@ from sqlalchemy import pool
 from alembic import context
 import os
 import sys
-from dotenv import load_dotenv
-
-# Cargar variables desde .env
-load_dotenv()
 
 # Add the project root to the path
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
@@ -53,7 +49,7 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = config.get_main_option("sqlalchemy.url")
+    url = os.getenv("DATABASE_URL") or config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -72,17 +68,22 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
-    # Sobrescribir la URL con la del entorno si existe
-    database_url = os.getenv("DATABASE_URL")
-    if database_url:
-        section = config.get_section(config.config_ini_section, {})
-        section["sqlalchemy.url"] = database_url
-    
-    connectable = engine_from_config(
-        section if database_url else config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
-    )
+    # Read DATABASE_URL from environment, fallback to config file
+    url = os.getenv("DATABASE_URL")
+    if url:
+        # Use environment variable
+        connectable = engine_from_config(
+            {"sqlalchemy.url": url},
+            prefix="sqlalchemy.",
+            poolclass=pool.NullPool,
+        )
+    else:
+        # Fallback to config file (for local development without env var)
+        connectable = engine_from_config(
+            config.get_section(config.config_ini_section, {}),
+            prefix="sqlalchemy.",
+            poolclass=pool.NullPool,
+        )
 
     with connectable.connect() as connection:
         context.configure(

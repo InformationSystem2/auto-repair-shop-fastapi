@@ -1,8 +1,8 @@
-"""Initial consolidated migration
+"""initial_migration
 
-Revision ID: 7cc45f387578
+Revision ID: e1e787f1a6a1
 Revises: 
-Create Date: 2026-04-20 10:27:33.734790
+Create Date: 2026-04-25 18:22:13.804524
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = '7cc45f387578'
+revision: str = 'e1e787f1a6a1'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -57,6 +57,7 @@ def upgrade() -> None:
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('type', sa.String(length=50), nullable=False),
+    sa.Column('fcm_token', sa.String(length=500), nullable=True),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('email'),
     sa.UniqueConstraint('username')
@@ -159,9 +160,11 @@ def upgrade() -> None:
     sa.Column('ai_priority', sa.Enum('LOW', 'MEDIUM', 'HIGH', 'CRITICAL', name='incident_priority_enum'), nullable=True),
     sa.Column('ai_summary', sa.Text(), nullable=True),
     sa.Column('ai_confidence', sa.Float(), nullable=True),
+    sa.Column('vertex_analysis', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
     sa.Column('assigned_workshop_id', sa.UUID(), nullable=True),
     sa.Column('assigned_technician_id', sa.UUID(), nullable=True),
     sa.Column('estimated_arrival_min', sa.Integer(), nullable=True),
+    sa.Column('total_cost', sa.Float(), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.ForeignKeyConstraint(['assigned_technician_id'], ['technicians.id'], ondelete='SET NULL'),
