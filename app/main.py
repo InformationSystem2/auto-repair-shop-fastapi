@@ -67,7 +67,7 @@ async def shutdown_event():
     logger.info("App apagada, scheduler detenido")
 
 # Configurar CORS
-allowed_origins = os.getenv("ALLOWED_ORIGINS", "*").split(",")
+allowed_origins = [origin.strip() for origin in os.getenv("ALLOWED_ORIGINS", "*").split(",")]
 
 app.add_middleware(
     CORSMiddleware,
