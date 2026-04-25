@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # Import models to ensure they are registered with SQLAlchemy
 from app.module_workshops.models import Workshop, Technician, Specialty, WorkshopSpecialty
 from app.module_incidents.models import Incident, Rating, WorkshopOffer
+from app.module_reports.models.report_template import ReportTemplate
 
 from app.module_users.controller.user_controller import router as users_router
 from app.scheduler import start_scheduler, stop_scheduler
@@ -97,3 +98,6 @@ app.include_router(specialty_router)
 
 from app.module_dashboard.dashboard_controller import router as dashboard_router
 app.include_router(dashboard_router)
+
+from app.module_reports.controller.report_controller import router as reports_router
+app.include_router(reports_router)
