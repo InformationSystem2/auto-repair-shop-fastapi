@@ -58,6 +58,8 @@ _KEYWORD_MAP: dict[str, tuple[str, str]] = {
     "brake": ("general", "HIGH"),
     "aire": ("ac", "LOW"),
     " ac ": ("ac", "LOW"),
+    "a/c": ("ac", "LOW"),
+    "climatiz": ("ac", "LOW"),
     "transmision": ("transmission", "HIGH"),
     "transmission": ("transmission", "HIGH"),
     "grua": ("towing", "MEDIUM"),
@@ -114,12 +116,15 @@ def prepare_image_for_vertex(file_url: str) -> PreparedImage:
 
 # --- AI Logic ---
 
-def _build_triage_prompt(description: str, audio_transcript: str | None) -> str:
+def _build_triage_prompt(description: str, audio_transcript: str | None, vehicle_info: str | None = None) -> str:
     transcript = (audio_transcript or "").strip()
     return (
-        "Eres un experto en triaje técnico automotriz. Tu audiencia es un mecánico profesional.\n"
-        "Analiza las imágenes y el texto proporcionado para dar un diagnóstico profundo.\n"
-        "Responde EXCLUSIVAMENTE en JSON con esta estructura:\n"
+        "Eres un Ingeniero de Soporte Técnico Automotriz con años de experiencia. Tu objetivo es realizar un triaje preciso basado en evidencia visual y textual.\n"
+        "INSTRUCCIONES DE ANÁLISIS:\n"
+        "1. Analiza las imágenes buscando: luces de advertencia (MIL/Check Engine), deformaciones, quemaduras, fluidos visibles (fugas), o daños estructurales.\n"
+        "2. Cruza la descripción del usuario con lo que ves en las fotos.\n"
+        "3. Determina la urgencia: ¿Es seguro conducir el vehículo?\n\n"
+        "Responde en JSON con esta estructura:\n"
         "{\n"
         "  \"sistema\": {\n"
         "    \"categoria\": \"categoria_elegida\",\n"
@@ -129,20 +134,20 @@ def _build_triage_prompt(description: str, audio_transcript: str | None) -> str:
         "    \"confianza\": 0.9\n"
         "  },\n"
         "  \"tecnico\": {\n"
-        "    \"diagnostico_tecnico\": \"Explicación detallada de la falla, componentes afectados y severidad técnica.\",\n"
+        "    \"diagnostico_tecnico\": \"Análisis profundo: Componentes afectados, posibles fallas en cascada y severidad técnica.\",\n"
         "    \"herramientas_sugeridas\": [\"Herramienta 1\", \"Herramienta 2\"],\n"
-        "    \"procedimiento_recomendado\": \"Pasos detallados para la inspección y reparación inicial.\"\n"
+        "    \"procedimiento_recomendado\": \"Guía paso a paso para el mecánico que recibirá el vehículo.\"\n"
         "  },\n"
         "  \"cliente\": {\n"
-        "    \"mensaje_tranquilizador\": \"string\",\n"
-        "    \"posible_causa\": \"string\",\n"
-        "    \"consejo_seguridad\": \"string\"\n"
+        "    \"mensaje_tranquilizador\": \"Mensaje empático y profesional.\",\n"
+        "    \"posible_causa\": \"Explicación en lenguaje sencillo pero preciso.\",\n"
+        "    \"consejo_seguridad\": \"Acciones inmediatas para el cliente (ej. 'No abra el capó', 'Estaciónese inmediatamente').\"\n"
         "  }\n"
         "}\n"
         "Reglas:\n"
-        "- En diagnostico_tecnico, sé muy específico (ej. 'Falla en el solenoide de arranque' en lugar de 'no prende').\n"
-        "- En procedimiento_recomendado, describe al menos 3 pasos de inspección.\n"
+        "- Sé extremadamente específico en el diagnóstico técnico.\n"
         "- Categorías: [battery, tire, collision, engine, ac, transmission, towing, locksmith, general, uncertain].\n"
+        f"Vehículo: {vehicle_info or 'No especificado'}\n"
         f"Contexto del usuario: {description}\n"
         f"Transcripción de audio: {transcript or 'N/A'}"
     )
@@ -150,17 +155,19 @@ def _build_triage_prompt(description: str, audio_transcript: str | None) -> str:
 
 def _build_estimation_prompt(diagnostic: str, category: str) -> str:
     return (
-        f"You are an automotive cost estimation assistant. Using Google Search, find the current "
-        f"market prices (labor and parts) in Bolivia (BOB) for the following incident.\n"
-        f"Diagnostic: {diagnostic}\n"
-        f"Category: {category}\n\n"
-        f"Respond ONLY in valid JSON with this exact structure:\n"
+        f"Actúa como un perito tasador de seguros automotrices en Bolivia. "
+        f"Tu misión es estimar el costo de reparación basado en el siguiente diagnóstico: {diagnostic}\n"
+        f"Categoría: {category}\n\n"
+        f"Usa Google Search para obtener precios reales en el mercado boliviano (Santa Cruz, La Paz, Cochabamba).\n"
+        "Considera tanto repuestos (originales vs alternativos) como mano de obra promedio.\n\n"
+        "Responde SOLAMENTE en JSON:\n"
         "{\n"
         "  \"costo_estimado\": {\n"
         "    \"moneda\": \"BOB\",\n"
         "    \"min\": 0.0,\n"
         "    \"max\": 0.0,\n"
-        "    \"justificacion\": \"Resumen de la justificacion usando precios del mercado\"\n"
+        "    \"desglose\": \"Detalle breve: Repuestos (~X BOB) + Mano de Obra (~Y BOB)\",\n"
+        "    \"justificacion\": \"Justificación basada en precios actuales del mercado local.\"\n"
         "  }\n"
         "}\n"
     )
@@ -197,10 +204,13 @@ def _normalize_triage_result(payload: dict) -> dict:
         "bateria": "battery",
         "llanta": "tire",
         "choque": "collision",
+        "colision": "collision",
         "motor": "engine",
         "transmision": "transmission",
         "grua": "towing",
         "llave": "locksmith",
+        "aire": "ac",
+        "freno": "general",
         "incierto": "uncertain"
     }
     category = es_to_en.get(category_raw, category_raw)
@@ -241,7 +251,9 @@ def _normalize_triage_result(payload: dict) -> dict:
 
 def analyze_incident_multimodal(
     description: str,
-    image_urls: List[str]
+    image_urls: List[str],
+    audio_transcript: str | None = None,
+    vehicle_info: str | None = None
 ) -> Optional[dict]:
     """
     Unified multimodal triage. Handles image preparation internally.
@@ -251,21 +263,31 @@ def analyze_incident_multimodal(
         return None
 
     try:
-        # 1. Preparar imágenes
+        # 1. Preparar imágenes mejoradas con caché
         prepared_parts = []
+        image_cache = {}
         for url in image_urls:
             try:
-                img_data = _download_image(url)
-                prepared_parts.append(Part.from_data(data=img_data, mime_type="image/jpeg"))
+                if url not in image_cache:
+                    prepared = prepare_image_for_vertex(url)
+                    image_cache[url] = Part.from_data(data=prepared.content, mime_type=prepared.mime_type)
+                prepared_parts.append(image_cache[url])
             except Exception as e:
                 logger.warning(f"Could not prepare image {url} for Vertex: {e}")
 
-        # 2. Inicializar modelo
-        vertexai.init(project=VERTEX_PROJECT_ID, location=VERTEX_LOCATION)
+        # 2. Inicializar modelo con fallback de credenciales
+        key_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_VERTEX")
+        creds = None
+        if key_path and os.path.exists(key_path):
+            from google.oauth2 import service_account
+            creds = service_account.Credentials.from_service_account_file(key_path)
+            logger.info(f"✅ Vertex AI inicializado usando archivo: {key_path}")
+        
+        vertexai.init(project=VERTEX_PROJECT_ID, location=VERTEX_LOCATION, credentials=creds)
         model = GenerativeModel(VERTEX_MODEL_NAME)
 
         # 3. Construir prompt y contenido
-        prompt = _build_triage_prompt(description, None)
+        prompt = _build_triage_prompt(description, audio_transcript, vehicle_info)
         parts = [prompt] + prepared_parts
 
         # 4. Generar contenido
@@ -295,13 +317,20 @@ def analyze_incident_multimodal(
 
 
 def estimate_cost_grounded(diagnostic: str, category: str) -> Optional[dict]:
-    """Separate call for cost estimation with Google Search grounding (previously estimation_service)"""
+    """Separate call for cost estimation with Google Search grounding"""
     if not VERTEX_PROJECT_ID:
         logger.warning("VERTEX_PROJECT_ID is not configured for cost estimation")
         return None
 
     try:
-        vertexai.init(project=VERTEX_PROJECT_ID, location=VERTEX_LOCATION)
+        # Reutilizar lógica de credenciales para estimate
+        key_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_VERTEX")
+        creds = None
+        if key_path and os.path.exists(key_path):
+            from google.oauth2 import service_account
+            creds = service_account.Credentials.from_service_account_file(key_path)
+        
+        vertexai.init(project=VERTEX_PROJECT_ID, location=VERTEX_LOCATION, credentials=creds)
         
         try:
             tool = Tool.from_dict({"google_search": {}})
