@@ -12,8 +12,7 @@ WORKDIR /app
 # gcc para compilar algunas dependencias de python si es necesario
 RUN apt-get update && apt-get install -y \
     libpq-dev \
-    gcc \
-    curl \  
+    gcc \ 
     ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
