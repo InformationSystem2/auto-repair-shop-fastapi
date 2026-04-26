@@ -6,7 +6,7 @@ steps:
       - '-t'
       - 'gcr.io/$PROJECT_ID/github.com/informationsystem2/auto-repair-shop-fastapi:$COMMIT_SHA'
       - '-f'
-      - 'Dockerfile'          # o 'Dockerfile.deploy' si lo tienes con otro nombre
+      - 'Dockerfile.deploy'          # o 'Dockerfile.deploy' si lo tienes con otro nombre
       - '.'
 
   # Subir la imagen a Artifact Registry
