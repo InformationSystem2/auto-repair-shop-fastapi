@@ -25,6 +25,8 @@ class PaymentResponseDTO(BaseModel):
     currency: str
     payment_method: str
     gateway_transaction_id: str | None
+    payout_id: str | None = None
+    payout_status: str | None = None
     paid_at: datetime | None
     created_at: datetime
 

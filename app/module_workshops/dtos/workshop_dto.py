@@ -36,6 +36,7 @@ class WorkshopUpdate(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     specialty_ids: Optional[List[int]] = None
+    paypal_email: Optional[EmailStr] = None
 
 class WorkshopAdminUpdate(WorkshopUpdate):
     is_available: Optional[bool] = None
@@ -59,6 +60,7 @@ class WorkshopResponse(WorkshopBase):
     updated_at: datetime
     specialties: List[SpecialtyResponse] = Field(default_factory=list)
     
+    paypal_email: Optional[str] = None
     # New fields for Admin Detail View
     owner_name: Optional[str] = None
     owner_email: Optional[str] = None

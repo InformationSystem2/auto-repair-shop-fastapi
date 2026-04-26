@@ -67,6 +67,7 @@ class Workshop(Base):
     last_rejection_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     rejection_rate: Mapped[float] = mapped_column(Float, nullable=False, default=0.0, server_default=text("0.0"))
     activity_points: Mapped[int] = mapped_column(Integer, nullable=False, default=50, server_default=text("50"))
+    paypal_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=text("TRUE"))
     is_available: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=text("TRUE"))
     is_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("FALSE"))

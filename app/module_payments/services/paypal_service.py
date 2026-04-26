@@ -88,6 +88,57 @@ async def create_order(amount_usd: float, incident_id: str) -> dict:
     return {"order_id": order_id, "approve_url": approve_url}
 
 
+async def send_payout(
+    workshop_email: str,
+    net_amount: float,
+    currency: str,
+    payment_id: str,
+    incident_id: str,
+) -> dict:
+    """
+    Envía el monto neto al taller via PayPal Payouts API.
+    La plataforma retiene la comisión; el taller recibe net_amount.
+    """
+    access_token = await get_access_token()
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            f"{_base_url()}/v1/payments/payouts",
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "sender_batch_header": {
+                    "sender_batch_id": f"payout_{payment_id}",
+                    "email_subject": "Pago por servicio de Auxilio Mecánico",
+                    "email_message": (
+                        f"Has recibido el pago correspondiente al servicio "
+                        f"#{incident_id[:8].upper()}. ¡Gracias por usar Auxilio Mecánico!"
+                    ),
+                },
+                "items": [
+                    {
+                        "recipient_type": "EMAIL",
+                        "amount": {"value": f"{net_amount:.2f}", "currency": currency},
+                        "note": f"Servicio #{incident_id[:8].upper()} — monto neto descontada comisión de plataforma",
+                        "sender_item_id": f"item_{payment_id}",
+                        "receiver": workshop_email,
+                    }
+                ],
+            },
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
+    batch_id = data["batch_header"]["payout_batch_id"]
+    batch_status = data["batch_header"]["batch_status"]
+    logger.info(
+        f"[PayPal Payout] {net_amount:.2f} {currency} → {workshop_email} "
+        f"| batch: {batch_id} | status: {batch_status}"
+    )
+    return {"payout_id": batch_id, "payout_status": batch_status}
+
+
 async def capture_order(order_id: str) -> dict:
     """
     Captura el pago de una orden aprobada. Devuelve los detalles de la captura.

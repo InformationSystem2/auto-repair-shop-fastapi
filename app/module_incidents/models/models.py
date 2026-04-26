@@ -287,6 +287,8 @@ class Payment(Base):
         default=PaymentStatus.PENDING,
     )
     gateway_transaction_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    payout_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    payout_status: Mapped[str | None] = mapped_column(String(30), nullable=True)
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
