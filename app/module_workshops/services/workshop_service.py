@@ -172,11 +172,15 @@ class WorkshopService:
             workshop.latitude = dto.latitude
         if dto.longitude is not None:
             workshop.longitude = dto.longitude
-            
+        if dto.paypal_email is not None:
+            workshop.paypal_email = str(dto.paypal_email)
+        elif hasattr(dto, 'paypal_email') and dto.paypal_email == '':
+            workshop.paypal_email = None
+
         if dto.specialty_ids is not None:
             specialties = self.specialty_repo.get_by_ids(dto.specialty_ids)
             workshop.specialties = specialties
-            
+
         return self.repository.update(workshop)
 
     def clear_cooldown(self, workshop_id: uuid.UUID) -> dict:

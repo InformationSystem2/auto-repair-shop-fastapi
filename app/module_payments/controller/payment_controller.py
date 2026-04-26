@@ -11,6 +11,7 @@ from app.module_incidents.repositories import incident_repository
 from app.module_payments.dtos.payment_dtos import CreateOrderDTO, OrderCreatedDTO, PaymentResponseDTO
 from app.module_payments.repositories import payment_repository
 from app.module_payments.services import paypal_service
+from app.module_workshops.models import Workshop
 from app.module_workshops.repositories import workshop_repository
 from app.security.config.security import get_current_user, require_role
 
@@ -126,6 +127,36 @@ async def capture_order(
     payment_repository.save_payment(db, payment)
 
     logger.info(f"[Pago] Captura exitosa para incidente {payment.incident_id}: {capture['capture_id']}")
+
+    # Payout automático al taller si tiene email PayPal configurado
+    workshop = db.query(Workshop).filter(Workshop.id == payment.workshop_id).first()
+    if workshop and workshop.paypal_email:
+        try:
+            payout = await paypal_service.send_payout(
+                workshop_email=workshop.paypal_email,
+                net_amount=payment.net_amount,
+                currency=payment.currency,
+                payment_id=str(payment.id),
+                incident_id=str(payment.incident_id),
+            )
+            payment.payout_id = payout["payout_id"]
+            payment.payout_status = payout["payout_status"]
+            payment_repository.save_payment(db, payment)
+            logger.info(
+                f"[Pago] Payout enviado al taller '{workshop.name}' "
+                f"({workshop.paypal_email}): {payout['payout_id']}"
+            )
+        except Exception as payout_exc:
+            payment.payout_status = "FAILED"
+            payment_repository.save_payment(db, payment)
+            logger.error(
+                f"[Pago] Error enviando payout al taller '{workshop.name}': {payout_exc}"
+            )
+    else:
+        logger.info(
+            f"[Pago] Taller '{workshop.name if workshop else payment.workshop_id}' "
+            f"sin PayPal configurado — payout omitido"
+        )
 
     return PaymentResponseDTO.model_validate(payment)
 
