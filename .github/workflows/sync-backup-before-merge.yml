@@ -1,0 +1,42 @@
+name: Sincronizar backup-main antes del merge
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  backup-main-update:
+    runs-on: ubuntu-latest
+    # Permisos necesarios para poder hacer push a la rama
+    permissions:
+      contents: write  # Permite git push
+
+    steps:
+      - name: Checkout del repositorio (historial completo)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # Token automático con permisos de escritura
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Forzar backup-main a apuntar al commit actual de main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin main backup-main
+
+          echo "Actualizando backup-main al commit de main: $(git rev-parse origin/main)"
+
+          # Push forzado con protección de lease (no sobrescribe si alguien empujó a backup-main en paralelo)
+          git push origin origin/main:refs/heads/backup-main --force-with-lease
+
+      - name: Verificación final
+        if: success()
+        run: |
+          MAIN_SHA=$(git rev-parse origin/main)
+          BACKUP_SHA=$(git rev-parse origin/backup-main)
+          if [ "$MAIN_SHA" != "$BACKUP_SHA" ]; then
+            echo "Error: los SHAs no coinciden. Algo salió mal en el push."
+            exit 1
+          fi
+          echo "✅ backup-main sincronizada correctamente con main ($MAIN_SHA)"
