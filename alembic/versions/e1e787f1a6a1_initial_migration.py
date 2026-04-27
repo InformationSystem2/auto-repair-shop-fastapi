@@ -198,7 +198,7 @@ def upgrade() -> None:
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('user_id', sa.UUID(), nullable=False),
     sa.Column('incident_id', sa.UUID(), nullable=True),
-    sa.Column('type', sa.Enum('NEW_REQUEST', 'ACCEPTED', 'REJECTED', 'STATUS_UPDATE', 'PAYMENT', 'SYSTEM', name='notification_type_enum'), nullable=False),
+    sa.Column('type', sa.Enum('NEW_REQUEST', 'ACCEPTED', 'REJECTED', 'STATUS_UPDATE', 'PAYMENT', 'SYSTEM', 'SERVICE_COMPLETED', name='notification_type_enum'), nullable=False),
     sa.Column('title', sa.String(length=150), nullable=False),
     sa.Column('body', sa.Text(), nullable=False),
     sa.Column('is_read', sa.Boolean(), nullable=False),
