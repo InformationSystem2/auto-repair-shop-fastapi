@@ -84,8 +84,35 @@ async def location_ws(
         await location_manager.connect_viewer(websocket, incident_id)
         try:
             await websocket.send_json({"type": "connected", "role": "viewer"})
+
+            # ── Send last known location immediately ──────────────────────────
+            db = SessionLocal()
+            try:
+                from app.module_incidents.models.models import Incident
+                incident = db.query(Incident).filter(
+                    Incident.id == incident_id
+                ).first()
+                if incident and incident.assigned_technician_id:
+                    tech = db.query(Technician).filter(
+                        Technician.id == incident.assigned_technician_id
+                    ).first()
+                    if tech and tech.current_latitude is not None and tech.current_longitude is not None:
+                        # Technician inherits from User — name fields are directly on tech
+                        tech_name = f"{tech.name} {tech.last_name}".strip() or "Técnico"
+                        await websocket.send_json({
+                            "type": "location",
+                            "lat": float(tech.current_latitude),
+                            "lng": float(tech.current_longitude),
+                            "technician_name": tech_name,
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                        })
+            finally:
+                db.close()
+            # ─────────────────────────────────────────────────────────────────
+
             while True:
                 # Block until the client disconnects; ignore any incoming messages.
                 await websocket.receive_text()
         except WebSocketDisconnect:
             location_manager.disconnect_viewer(websocket, incident_id)
+
