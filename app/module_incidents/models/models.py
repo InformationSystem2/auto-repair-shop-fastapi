@@ -24,7 +24,7 @@ class NotificationType(str, enum.Enum):
     STATUS_UPDATE = "status_update"
     PAYMENT = "payment"
     SYSTEM = "system"
-
+    SERVICE_COMPLETED = "service_completed"
 
 class PaymentMethod(str, enum.Enum):
     QR = "qr"

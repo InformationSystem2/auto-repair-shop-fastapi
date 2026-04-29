@@ -1,3 +1,6 @@
+from app.module_incidents.models import Rating
+from app.module_workshops.models import Technician
+from app.module_workshops.models import Workshop
 import asyncio
 import logging
 import os
@@ -273,33 +276,67 @@ def request_help(
 
 
 @router.get(
-    "/{incident_id}",
-    response_model=dict, # Usamos dict para flexibilidad o IncidentResponseDto si lo permite
+    "/my-active",
     status_code=status.HTTP_200_OK,
-    dependencies=[Depends(require_role("client", "admin", "workshop_owner", "technician"))],
+    dependencies=[Depends(require_role("client"))],
 )
-def get_incident(
-    incident_id: uuid.UUID,
+def get_my_active_incident(
+    current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    incident = incident_repository.get_incident_by_id(db, incident_id)
+    """Returns the client's most recent non-final incident, or null."""
+    from app.module_incidents.models.models import Incident as IncidentModel, IncidentStatus
+    from app.security.models import Client
+
+    client = db.query(Client).filter(Client.id == current_user.id).first()
+    if not client:
+        return None
+
+    active_statuses = [
+        IncidentStatus.PENDING, IncidentStatus.ANALYZING,
+        IncidentStatus.PENDING_INFO, IncidentStatus.MATCHED,
+        IncidentStatus.ASSIGNED, IncidentStatus.IN_PROGRESS,
+    ]
+    incident = (
+        db.query(IncidentModel)
+        .filter(IncidentModel.client_id == client.id, IncidentModel.status.in_(active_statuses))
+        .order_by(IncidentModel.created_at.desc())
+        .first()
+    )
     if not incident:
-        raise HTTPException(status_code=404, detail="Incidente no encontrado")
-    
-    # [MODIFICADO] Inyectando resolución en caliente de vertex_analysis
-    evidences = evidence_repository.get_evidences_by_incident(db, incident_id)
+        return None
+
+    return _build_incident_response(db, incident)
+
+
+def _build_incident_response(db, incident):
+    """Shared helper: build the full incident dict with workshop/technician names."""
+    from app.module_incidents.repositories import evidence_repository as ev_repo
+    from app.module_workshops.models.models import Workshop, Technician
+
+    evidences = ev_repo.get_evidences_by_incident(db, incident.id)
     vertex_analysis = None
     evidence_urls = []
-    
     for ev in evidences:
         if ev.evidence_type.value.lower() in ["image", "audio"]:
             evidence_urls.append({
                 "url": storage_service.generate_signed_url(ev.file_url),
-                "type": ev.evidence_type.value.lower()
+                "type": ev.evidence_type.value.lower(),
             })
         if ev.ai_analysis and "vertex" in ev.ai_analysis:
             vertex_analysis = ev.ai_analysis["vertex"]
-            
+
+    workshop_name = None
+    technician_name = None
+    if incident.assigned_workshop_id:
+        ws = db.query(Workshop).filter(Workshop.id == incident.assigned_workshop_id).first()
+        if ws:
+            workshop_name = ws.name
+    if incident.assigned_technician_id:
+        tech = db.query(Technician).filter(Technician.id == incident.assigned_technician_id).first()
+        if tech:
+            technician_name = f"{tech.name} {tech.last_name}"
+
     return {
         "id": incident.id,
         "status": incident.status.value,
@@ -315,7 +352,104 @@ def get_incident(
         "created_at": incident.created_at,
         "updated_at": incident.updated_at,
         "vertex_analysis": vertex_analysis,
-        "evidence_urls": evidence_urls
+        "evidence_urls": evidence_urls,
+        "workshop_name": workshop_name,
+        "technician_name": technician_name,
+        "message": "",
+    }
+
+@router.get(
+    "/{incident_id}",
+    response_model=dict, # Usamos dict para flexibilidad o IncidentResponseDto si lo permite
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(require_role("client", "admin", "workshop_owner", "technician"))],
+)
+def get_incident(
+    incident_id: uuid.UUID,
+    db: Session = Depends(get_db),
+):
+    incident = incident_repository.get_incident_by_id(db, incident_id)
+    if not incident:
+        raise HTTPException(status_code=404, detail="Incidente no encontrado")
+    
+    # [MODIFICADO] Inyectando resolución en caliente de vertex_analysis y relaciones
+    evidences = evidence_repository.get_evidences_by_incident(db, incident_id)
+    vertex_analysis = None
+    evidence_urls = []
+    
+    for ev in evidences:
+        if ev.evidence_type.value.lower() in ["image", "audio"]:
+            evidence_urls.append({
+                "url": storage_service.generate_signed_url(ev.file_url),
+                "type": ev.evidence_type.value.lower(),
+                "transcription": ev.transcription
+            })
+        if ev.ai_analysis and "vertex" in ev.ai_analysis:
+            vertex_analysis = ev.ai_analysis["vertex"]
+
+    # Workshop & Tech Info
+    workshop_name = None
+    if incident.assigned_workshop_id:
+        w = db.query(Workshop).filter(Workshop.id == incident.assigned_workshop_id).first()
+        if w: workshop_name = w.name
+
+    tech_name = None
+    if incident.assigned_technician_id:
+        t = db.query(Technician).filter(Technician.id == incident.assigned_technician_id).first()
+        if t: tech_name = f"{t.name} {t.last_name}"
+
+    # Rating Info
+    rating_data = None
+    rating = db.query(Rating).filter(Rating.incident_id == incident_id).first()
+    if rating:
+        rating_data = {
+            "score": rating.score,
+            "comment": rating.comment,
+            "quality_score": rating.quality_score,
+            "response_time_score": rating.response_time_score
+        }
+
+    # Vehicle Info
+    vehicle_info = None
+    if incident.vehicle_id:
+        v = db.query(Vehicle).filter(Vehicle.id == incident.vehicle_id).first()
+        if v:
+            vehicle_info = {
+                "make": v.make,
+                "model": v.model,
+                "year": v.year,
+                "license_plate": v.license_plate
+            }
+            
+    # Payment Status Resolution
+    from app.module_incidents.models import Payment, PaymentStatus
+    payment = db.query(Payment).filter(
+        Payment.incident_id == incident_id, 
+        Payment.status == PaymentStatus.COMPLETED
+    ).first()
+    payment_status = "completed" if payment else "pending"
+
+    return {
+        "id": str(incident.id),
+        "status": incident.status.value,
+        "description": incident.description,
+        "ai_category": incident.ai_category,
+        "ai_priority": incident.ai_priority.value if incident.ai_priority else None,
+        "ai_confidence": incident.ai_confidence,
+        "ai_summary": incident.ai_summary,
+        "latitude": incident.incident_lat,
+        "longitude": incident.incident_lng,
+        "estimated_arrival_min": incident.estimated_arrival_min,
+        "total_cost": incident.total_cost,
+        "payment_status": payment_status,
+        "created_at": incident.created_at.isoformat(),
+        "updated_at": incident.updated_at.isoformat() if incident.updated_at else None,
+        "vertex_analysis": vertex_analysis,
+        "evidence_urls": evidence_urls,
+        "workshop_name": workshop_name,
+        "technician_name": tech_name,
+        "rating": rating_data,
+        "vehicle": vehicle_info
     }
 
 

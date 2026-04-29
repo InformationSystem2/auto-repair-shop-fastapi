@@ -8,9 +8,6 @@ logger = logging.getLogger(__name__)
 from fastapi.middleware.cors import CORSMiddleware
 
 # Import models to ensure they are registered with SQLAlchemy
-from app.module_workshops.models import Workshop, Technician, Specialty, WorkshopSpecialty
-from app.module_incidents.models import Incident, Rating, WorkshopOffer
-from app.module_reports.models.report_template import ReportTemplate
 
 from app.module_users.controller.user_controller import router as users_router
 from app.scheduler import start_scheduler, stop_scheduler
@@ -21,7 +18,7 @@ from app.security.controller.client_controller import router as client_route
 from app.module_users.controller.vehicle_controller import router as vehicle_route
 from app.module_incidents.controller.incident_controller import router as incidents_router
 from app.module_incidents.controller.offer_controller import router as offers_router
-from app.module_payments.controller.payment_controller import router as payments_router
+from app.module_incidents.controller.payment_controller import router as payments_router
 from app.module_workshops.controller.workshop_controller import router as workshop_router
 from app.module_workshops.controller.technician_controller import router as technician_router
 from app.module_workshops.controller.specialty_controller import router as specialty_router
@@ -98,8 +95,14 @@ app.include_router(workshop_router)
 app.include_router(technician_router)
 app.include_router(specialty_router)
 
-from app.module_dashboard.dashboard_controller import router as dashboard_router
+from app.module_users.controller.dashboard_controller import router as dashboard_router
 app.include_router(dashboard_router)
 
-from app.module_reports.controller.report_controller import router as reports_router
+from app.module_workshops.controller.report_controller import router as reports_router
 app.include_router(reports_router)
+
+from app.module_incidents.ws.location_router import router as location_ws_router
+app.include_router(location_ws_router)
+
+from app.module_incidents.controller.rating_controller import router as ratings_router
+app.include_router(ratings_router)
