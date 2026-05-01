@@ -35,3 +35,6 @@ steps:
 
 images:
   - "gcr.io/$PROJECT_ID/github.com/informationsystem2/auto-repair-shop-fastapi:$COMMIT_SHA"
+
+options:
+  logging: CLOUD_LOGGING_ONLY
