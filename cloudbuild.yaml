@@ -1,5 +1,5 @@
 steps:
-  # Construir la imagen Docker
+  # 1. Construir la imagen Docker
   - name: "gcr.io/cloud-builders/docker"
     args:
       - "build"
@@ -9,13 +9,13 @@ steps:
       - "Dockerfile.deploy"
       - "."
 
-  # Subir la imagen a Artifact Registry
+  # 2. Subir la imagen a Artifact Registry
   - name: "gcr.io/cloud-builders/docker"
     args:
       - "push"
       - "gcr.io/$PROJECT_ID/github.com/informationsystem2/auto-repair-shop-fastapi:$COMMIT_SHA"
-
-  # Desplegar en Cloud Run
+    
+  # 3. Desplegar en Cloud Run
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     entrypoint: gcloud
     args:
@@ -25,13 +25,12 @@ steps:
       - "--image"
       - "gcr.io/$PROJECT_ID/github.com/informationsystem2/auto-repair-shop-fastapi:$COMMIT_SHA"
       - "--region"
-      - "us-east4" # CORREGIDO: Apunta a Virginia (Norteamérica) para coincidir con Railway US East
+      - "us-east4" 
       - "--platform"
       - "managed"
-      - "--set-env-vars=^@^ALLOWED_ORIGINS=https://project-5ed4e5c6-d00d-4ed4-86c.web.app,https://project-5ed4e5c6-d00d-4ed4-86c.firebaseapp.com"
       - "--allow-unauthenticated"
-      - "--min-instances=0" # CLAVE PARA EL COSTO: 0 instancias cuando no hay tráfico
-      - "--max-instances=5" # PROTECCIÓN: Evita escalar al infinito si hay picos raros de tráfico
+      - "--min-instances=0"
+      - "--max-instances=5"
       - "--quiet"
 
 images:
