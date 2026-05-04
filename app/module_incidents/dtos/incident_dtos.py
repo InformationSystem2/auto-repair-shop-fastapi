@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 
 class EvidenceDto(BaseModel):
@@ -12,11 +12,23 @@ class EvidenceDto(BaseModel):
 
 
 class IncidentCreateDto(BaseModel):
-    description: str
+    description: Optional[str] = None
     vehicle_id: UUID
     latitude: float
     longitude: float
     evidences: List[EvidenceDto] = []
+
+    @model_validator(mode="after")
+    def at_least_one_input(self) -> "IncidentCreateDto":
+        has_text = bool(self.description and self.description.strip())
+        has_evidence = any(
+            e.evidence_type in ("image", "audio") for e in self.evidences
+        )
+        if not has_text and not has_evidence:
+            raise ValueError(
+                "Debes proporcionar al menos uno: texto, imagen o audio"
+            )
+        return self
 
 
 class IncidentEvidenceAddDto(BaseModel):

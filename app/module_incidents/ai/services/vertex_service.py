@@ -116,7 +116,7 @@ def prepare_image_for_vertex(file_url: str) -> PreparedImage:
 
 # --- AI Logic ---
 
-def _build_triage_prompt(description: str, audio_transcript: str | None, vehicle_info: str | None = None) -> str:
+def _build_triage_prompt(description: str | None, audio_transcript: str | None, vehicle_info: str | None = None) -> str:
     transcript = (audio_transcript or "").strip()
     return (
         "Eres un Ingeniero de Soporte Técnico Automotriz con años de experiencia. Tu objetivo es realizar un triaje preciso basado en evidencia visual y textual.\n"
@@ -148,7 +148,7 @@ def _build_triage_prompt(description: str, audio_transcript: str | None, vehicle
         "- Sé extremadamente específico en el diagnóstico técnico.\n"
         "- Categorías: [battery, tire, collision, engine, ac, transmission, towing, locksmith, general, uncertain].\n"
         f"Vehículo: {vehicle_info or 'No especificado'}\n"
-        f"Contexto del usuario: {description}\n"
+        f"Contexto del usuario: {description or 'No proporcionado'}\n"
         f"Transcripción de audio: {transcript or 'N/A'}"
     )
 
@@ -250,7 +250,7 @@ def _normalize_triage_result(payload: dict) -> dict:
 
 
 def analyze_incident_multimodal(
-    description: str,
+    description: str | None,
     image_urls: List[str],
     audio_transcript: str | None = None,
     vehicle_info: str | None = None

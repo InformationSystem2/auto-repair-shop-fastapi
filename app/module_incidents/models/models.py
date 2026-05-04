@@ -95,7 +95,7 @@ class Incident(Base):
     vehicle_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("vehicles.id", ondelete="SET NULL"), nullable=True
     )
-    description: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
     incident_lat: Mapped[float | None] = mapped_column(Float, nullable=True)
     incident_lng: Mapped[float | None] = mapped_column(Float, nullable=True)
     status: Mapped[IncidentStatus] = mapped_column(

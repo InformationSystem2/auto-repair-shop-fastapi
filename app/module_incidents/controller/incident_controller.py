@@ -234,7 +234,8 @@ def request_help(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    logger.info(f"Incident request from user {current_user.id}: {incident_data.description[:50]}... vehicle={incident_data.vehicle_id}")
+    desc_preview = (incident_data.description or "")[:50]
+    logger.info(f"Incident request from user {current_user.id}: {desc_preview!r} vehicle={incident_data.vehicle_id}")
     try:
         incident = incident_service.create_incident_request(db, current_user, incident_data)
     except Exception as e:
