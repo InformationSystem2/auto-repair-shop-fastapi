@@ -3,7 +3,7 @@ name: Database Migrations (Railway)
 on:
   push:
     branches:
-      - main
+      - evert_
     # Opcional: El pipeline solo se ejecuta si modificas archivos relacionados con la base de datos
     paths:
       - 'alembic/**'
