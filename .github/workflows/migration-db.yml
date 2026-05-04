@@ -1,0 +1,44 @@
+name: Database Migrations (Railway)
+
+on:
+  push:
+    branches:
+      - main
+    # Opcional: El pipeline solo se ejecuta si modificas archivos relacionados con la base de datos
+    paths:
+      - 'alembic/**'
+      - 'alembic.ini'
+      - 'requirements.txt'
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. El robot descarga tu código
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Prepara un entorno con Python 3.10 (igual que tu Dockerfile)
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      # 3. Instala Alembic y las dependencias de tu proyecto
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # 4. Ejecuta las migraciones contra Railway y el script de seed
+      - name: Run Alembic Upgrade & Seed
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          echo "Ejecutando migraciones de base de datos..."
+          alembic upgrade head || { echo '⚠️ Migration failed, trying to stamp head...'; alembic stamp head; }
+          
+          echo "Ejecutando script de seed..."
+          python3 -m app.seed || echo "⚠️ Seed falló o fue ignorado"

@@ -1,0 +1,42 @@
+name: Sincronizar backup-main antes del merge
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  backup-main-update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Necesario para hacer push
+
+    steps:
+      - name: Checkout del código (historial completo)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sincronizar o crear backup-main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+
+          if git ls-remote --heads origin backup-main | grep -q backup-main; then
+            echo "backup-main ya existe. Forzando actualización segura..."
+            git push origin origin/main:refs/heads/backup-main --force-with-lease
+          else
+            echo "backup-main no existe. Creándola..."
+            git push origin origin/main:refs/heads/backup-main
+          fi
+
+      - name: Verificar que backup-main coincida con main
+        run: |
+          MAIN_SHA=$(git rev-parse origin/main)
+          BACKUP_SHA=$(git rev-parse origin/backup-main)
+          if [ "$MAIN_SHA" != "$BACKUP_SHA" ]; then
+            echo "Error: los SHAs no coinciden. Main: $MAIN_SHA, Backup: $BACKUP_SHA"
+            exit 1
+          fi
+          echo "✅ backup-main sincronizada correctamente con main ($MAIN_SHA)"
